@@ -689,7 +689,7 @@ inSpanInternal t n args extraAttrs f
       writeIORef ctxRef $! entry {ceContext = insertSpan s ctx}
       -- User code (unmasked via restore)
       a <-
-        restore (run $ f s) `EUnsafe.catch` \someEx@(SomeException inner) -> do
+        restore (run $ f s) `EUnsafe.catchNoPropagate` \(e@(EUnsafe.ExceptionWithContext _context someEx@(SomeException inner))) -> do
           let ExceptionResponse classification exAttrs = resolveException t someEx
           case classification of
             ErrorException -> do
@@ -701,7 +701,7 @@ inSpanInternal t n args extraAttrs f
               pure ()
           endSpan s Nothing
           writeIORef ctxRef entry
-          EUnsafe.throwIO someEx
+          EUnsafe.rethrowIO e
       -- Success cleanup (runs masked; non-blocking, no uninterruptibleMask_ needed)
       endSpan s Nothing
       writeIORef ctxRef entry
